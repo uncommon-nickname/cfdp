@@ -62,4 +62,47 @@ class AckPdu : PduInterface
     static constexpr uint16_t const_pdu_size_bytes = sizeof(uint8_t) + sizeof(uint16_t);
 };
 
+class EndOfFile : PduInterface
+{
+  public:
+    EndOfFile(Condition conditionCode, uint32_t checksum, uint32_t fileSize,
+              uint8_t lengthOfEntityID, uint64_t faultEntityID);
+    EndOfFile(Condition conditionCode, uint32_t checksum, uint64_t fileSize,
+              uint8_t lengthOfEntityID, uint64_t faultEntityID);
+    EndOfFile(Condition conditionCode, uint32_t checksum, uint32_t fileSize);
+    EndOfFile(Condition conditionCode, uint32_t checksum, uint64_t fileSize);
+    EndOfFile(std::span<uint8_t const> memory, LargeFileFlag largeFileFlag);
+
+    [[nodiscard]] std::vector<uint8_t> encodeToBytes() const override;
+    [[nodiscard]] inline uint16_t getRawSize() const override
+    {
+        return const_pdu_size_bytes + getFileSize() + getFaultLocationSize();
+    };
+
+  private:
+    LargeFileFlag largeFileFlag;
+    Condition conditionCode;
+    uint64_t fileSize;
+    uint32_t checksum;
+    uint8_t lengthOfEntityID;
+    uint64_t faultEntityID;
+
+    static constexpr uint8_t const_pdu_size_bytes =
+        sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t);
+    static constexpr uint8_t const_small_file_pdu_size_bytes =
+        const_pdu_size_bytes + sizeof(uint32_t);
+    static constexpr uint8_t const_large_file_pdu_size_bytes =
+        const_pdu_size_bytes + sizeof(uint64_t);
+
+    [[nodiscard]] inline uint8_t getFileSize() const
+    {
+        return (largeFileFlag == LargeFileFlag::LargeFile) ? sizeof(uint64_t) : sizeof(uint32_t);
+    }
+
+    [[nodiscard]] inline uint8_t getFaultLocationSize() const
+    {
+        return (conditionCode != Condition::NoError) ? sizeof(uint8_t) + lengthOfEntityID : 0;
+    }
+};
+
 } // namespace cfdp::pdu::directive

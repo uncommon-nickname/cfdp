@@ -33,6 +33,15 @@ class AckPduTest : public testing::Test
     static constexpr std::array<uint8_t, 3> encoded_finished_ack_frame = {6, 81, 34};
 };
 
+class EndOfFileTest : public testing::Test
+{
+  protected:
+    static constexpr std::array<uint8_t, 10> encoded_small_no_error_frame = {
+        4, 0, 66, 58, 53, 199, 255, 255, 255, 255};
+    static constexpr std::array<uint8_t, 14> encoded_large_no_error_frame = {
+        4, 0, 66, 58, 53, 199, 255, 255, 255, 255, 255, 255, 255, 255};
+};
+
 TEST_F(KeepAlivePduTest, TestEncodingSmallFile)
 {
     auto pdu     = KeepAlivePdu(UINT32_MAX);
