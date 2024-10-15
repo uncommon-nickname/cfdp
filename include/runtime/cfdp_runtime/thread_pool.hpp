@@ -10,6 +10,7 @@
 
 #include "atomic_queue.hpp"
 #include "future.hpp"
+#include "logger.hpp"
 
 namespace cfdp::runtime::thread_pool
 {
@@ -52,12 +53,13 @@ auto ThreadPool::dispatchTask(Functor&& func) noexcept -> Future<decltype(func()
     // moving lambdas. We can't directly move the promise to the task,
     // so as a W/A we can wrap it into std::shared_ptr and copy it.
     auto promise = std::make_shared<std::promise<decltype(func())>>();
-    auto functor = std::forward<Functor>(func);
 
-    std::function<void()> wrapper = [promise, functor]() mutable {
+    logging::trace("dispatching a new task, queue size: {}", queue.sizeNow());
+
+    std::function<void()> wrapper = [promise, func]() mutable {
         try
         {
-            auto result = std::invoke(functor);
+            auto result = std::invoke(func);
             promise->set_value(result);
         }
         catch (...)
