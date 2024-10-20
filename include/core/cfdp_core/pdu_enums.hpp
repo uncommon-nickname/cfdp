@@ -94,4 +94,14 @@ enum class DirectiveSubtype : uint8_t
     Finished = 0b1,
 };
 
+enum class TLVType : uint8_t
+{
+    FilestoreRequest     = 0b000,
+    FilestoreResponse    = 0b001,
+    MessageToUser        = 0b010,
+    FaultHandlerOverride = 0b100,
+    FlowLabel            = 0b101,
+    EntityId             = 0b110,
+};
+
 } // namespace cfdp::pdu::directive
