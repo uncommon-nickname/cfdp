@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <iterator>
 #include <span>
+#include <string>
 #include <type_traits>
 #include <vector>
 
@@ -32,6 +33,10 @@ inline decltype(auto) toUnderlying(T e) noexcept
 {
     return static_cast<std::underlying_type_t<T>>(e);
 }
+
+std::string bytesToString(std::span<uint8_t const> memory, uint32_t offset, uint32_t size);
+std::span<uint8_t const> readLvValue(std::span<uint8_t const> memory, uint32_t offset);
+
 } // namespace cfdp::utils
 
 template <class T>

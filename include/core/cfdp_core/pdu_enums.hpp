@@ -94,6 +94,11 @@ enum class DirectiveSubtype : uint8_t
     Finished = 0b1,
 };
 
+} // namespace cfdp::pdu::directive
+
+namespace cfdp::pdu::tlv
+{
+
 enum class TLVType : uint8_t
 {
     FilestoreRequest     = 0b000,
@@ -103,5 +108,16 @@ enum class TLVType : uint8_t
     FlowLabel            = 0b101,
     EntityId             = 0b110,
 };
-
-} // namespace cfdp::pdu::directive
+enum class FilestoreRequestActionCode : uint8_t
+{
+    CreateFile      = 0b0000,
+    DeleteFile      = 0b0001,
+    RenameFile      = 0b0010,
+    AppendFile      = 0b0011,
+    ReplaceFile     = 0b0100,
+    CreateDirectory = 0b0101,
+    RemoveDirectory = 0b0110,
+    DenyFile        = 0b0111,
+    DenyDirectory   = 0b1000,
+};
+} // namespace cfdp::pdu::tlv

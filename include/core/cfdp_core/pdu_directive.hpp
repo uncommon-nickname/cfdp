@@ -1,7 +1,10 @@
+#include "cfdp_core/pdu_tlv.hpp"
 #include "pdu_enums.hpp"
 #include "pdu_interface.hpp"
 
 #include <cstdint>
+#include <memory>
+#include <optional>
 #include <span>
 
 using ::cfdp::pdu::header::LargeFileFlag;
@@ -58,7 +61,7 @@ class EndOfFile : PduInterface
 {
   public:
     EndOfFile(Condition conditionCode, uint32_t checksum, uint64_t fileSize,
-              LargeFileFlag largeFileFlag, uint8_t lengthOfEntityID, uint64_t faultEntityID);
+              LargeFileFlag largeFileFlag, std::unique_ptr<tlv::EntityId>);
     EndOfFile(Condition conditionCode, uint32_t checksum, uint64_t fileSize,
               LargeFileFlag largeFileFlag);
     EndOfFile(std::span<uint8_t const> memory, LargeFileFlag largeFileFlag);
@@ -67,15 +70,14 @@ class EndOfFile : PduInterface
 
     [[nodiscard]] inline uint16_t getRawSize() const override
     {
-        return const_pdu_size_bytes + getSizeOfFileSize() + getFaultLocationSize();
+        return const_pdu_size_bytes + getSizeOfFileSize() + getEntityIdSize();
     };
 
     uint64_t fileSize;
     LargeFileFlag largeFileFlag;
     Condition conditionCode;
     uint32_t checksum;
-    uint8_t lengthOfEntityID = 0;
-    uint64_t faultEntityID   = 0;
+    std::optional<std::unique_ptr<tlv::EntityId>> entityId;
 
   private:
     static constexpr uint8_t const_pdu_size_bytes =
@@ -88,9 +90,9 @@ class EndOfFile : PduInterface
         return (largeFileFlag == LargeFileFlag::LargeFile) ? sizeof(uint64_t) : sizeof(uint32_t);
     }
 
-    [[nodiscard]] inline uint8_t getFaultLocationSize() const
+    [[nodiscard]] inline uint8_t getEntityIdSize() const
     {
-        return (isError()) ? sizeof(uint8_t) + sizeof(uint8_t) + lengthOfEntityID : 0;
+        return entityId.has_value() ? entityId->get()->getRawSize() : 0;
     }
 };
 } // namespace cfdp::pdu::directive

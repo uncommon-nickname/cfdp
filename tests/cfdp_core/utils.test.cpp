@@ -15,8 +15,10 @@ using cfdp::pdu::exception::EncodeToBytesException;
 
 using ::cfdp::utils::bytesNeeded;
 using ::cfdp::utils::bytesToInt;
+using ::cfdp::utils::bytesToString;
 using ::cfdp::utils::concatenateVectorsInplace;
 using ::cfdp::utils::intToBytes;
+using ::cfdp::utils::readLvValue;
 using ::cfdp::utils::toUnderlying;
 
 namespace
@@ -70,6 +72,49 @@ TEST(CfdpUtils, TestBytesToIntTooSmallMemoryChunk)
     auto memory = std::span<uint8_t const>{buff.begin(), buff.end()};
 
     EXPECT_THROW(bytesToInt<uint32_t>(memory, 0, 5), DecodeFromBytesException);
+}
+
+TEST(CfdpUtils, TestBytesToString)
+{
+    auto buff   = std::array<uint8_t const, 5>{104, 101, 108, 108, 111};
+    auto memory = std::span<uint8_t const>{buff.begin(), buff.end()};
+
+    auto result = bytesToString(memory, 0, 4);
+
+    ASSERT_EQ(result, "hell");
+}
+
+TEST(CfdpUtils, TestBytesToStringTooShort)
+{
+    auto buff   = std::array<uint8_t const, 5>{104, 101, 108, 108, 111};
+    auto memory = std::span<uint8_t const>{buff.begin(), buff.end()};
+
+    EXPECT_THROW(bytesToString(memory, 3, 4), DecodeFromBytesException);
+}
+
+TEST(CfdpUtils, TestReadLvValue)
+{
+    auto buff   = std::array<uint8_t const, 5>{4, 0, 1, 2, 3};
+    auto memory = std::span<uint8_t const>{buff.begin(), buff.end()};
+
+    auto expected_value = std::span<uint8_t const>{buff.begin() + 1, buff.end()};
+
+    auto result = readLvValue(memory, 0);
+
+    ASSERT_EQ(result.size(), expected_value.size());
+
+    for (auto i = 0; i < expected_value.size(); ++i)
+    {
+        ASSERT_EQ(result[i], expected_value[i]);
+    }
+}
+
+TEST(CfdpUtils, TestReadLvValueMemoryTooShort)
+{
+    auto buff   = std::array<uint8_t const, 5>{5, 0, 1, 2, 3};
+    auto memory = std::span<uint8_t const>{buff.begin(), buff.end()};
+
+    EXPECT_THROW(readLvValue(memory, 0), DecodeFromBytesException);
 }
 
 TEST(CfdpUtils, TestConcatenateVectorsInplace)

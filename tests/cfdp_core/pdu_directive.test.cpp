@@ -1,3 +1,4 @@
+#include "cfdp_core/pdu_tlv.hpp"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -49,8 +50,9 @@ class EndOfFileTest : public testing::Test
                                              LargeFileFlag largeFileFlag, uint8_t lengthOfEntityID,
                                              uint64_t faultEntityID)
     {
-        return std::make_unique<EndOfFile>(conditionCode, 1111111111, fileSize, largeFileFlag,
-                                           lengthOfEntityID, faultEntityID);
+        return std::make_unique<EndOfFile>(
+            conditionCode, 1111111111, fileSize, largeFileFlag,
+            std::make_unique<cfdp::pdu::tlv::EntityId>(lengthOfEntityID, faultEntityID));
     }
 
   protected:
@@ -247,8 +249,7 @@ TEST_F(EndOfFileTest, TestEncodingSmallFileWithoutError)
     ASSERT_EQ(pdu->conditionCode, Condition::NoError);
     ASSERT_EQ(pdu->fileSize, UINT32_MAX);
     ASSERT_EQ(pdu->checksum, 1111111111);
-    ASSERT_EQ(pdu->lengthOfEntityID, 0);
-    ASSERT_EQ(pdu->faultEntityID, 0);
+    ASSERT_FALSE(pdu->entityId.has_value());
 
     EXPECT_THAT(encoded, testing::ElementsAreArray(encoded_small_no_error_frame));
 }
@@ -261,8 +262,7 @@ TEST_F(EndOfFileTest, TestEncodingLargeFileWithoutError)
     ASSERT_EQ(pdu->conditionCode, Condition::NoError);
     ASSERT_EQ(pdu->fileSize, UINT64_MAX);
     ASSERT_EQ(pdu->checksum, 1111111111);
-    ASSERT_EQ(pdu->lengthOfEntityID, 0);
-    ASSERT_EQ(pdu->faultEntityID, 0);
+    ASSERT_FALSE(pdu->entityId.has_value());
 
     EXPECT_THAT(encoded, testing::ElementsAreArray(encoded_large_no_error_frame));
 }
@@ -274,8 +274,9 @@ TEST_F(EndOfFileTest, TestEncodingSmallFileWithError)
     auto encoded = pdu->encodeToBytes();
 
     ASSERT_EQ(pdu->conditionCode, Condition::FileSizeError);
-    ASSERT_EQ(pdu->lengthOfEntityID, 2);
-    ASSERT_EQ(pdu->faultEntityID, 12345);
+    ASSERT_TRUE(pdu->entityId.has_value());
+    ASSERT_EQ(pdu->entityId->get()->lengthOfEntityID, 2);
+    ASSERT_EQ(pdu->entityId->get()->faultEntityID, 12345);
 
     EXPECT_THAT(encoded, testing::ElementsAreArray(encoded_small_with_error_frame));
 }
@@ -287,8 +288,9 @@ TEST_F(EndOfFileTest, TestEncodingLargeFileWithError)
     auto encoded = pdu->encodeToBytes();
 
     ASSERT_EQ(pdu->conditionCode, Condition::FileSizeError);
-    ASSERT_EQ(pdu->lengthOfEntityID, 2);
-    ASSERT_EQ(pdu->faultEntityID, 12345);
+    ASSERT_TRUE(pdu->entityId.has_value());
+    ASSERT_EQ(pdu->entityId->get()->lengthOfEntityID, 2);
+    ASSERT_EQ(pdu->entityId->get()->faultEntityID, 12345);
 
     EXPECT_THAT(encoded, testing::ElementsAreArray(encoded_large_with_error_frame));
 }
@@ -303,8 +305,7 @@ TEST_F(EndOfFileTest, TestDecodingSmallFileWithNoError)
     ASSERT_EQ(pdu.conditionCode, Condition::NoError);
     ASSERT_EQ(pdu.fileSize, UINT32_MAX);
     ASSERT_EQ(pdu.checksum, 1111111111);
-    ASSERT_EQ(pdu.lengthOfEntityID, 0);
-    ASSERT_EQ(pdu.faultEntityID, 0);
+    ASSERT_FALSE(pdu.entityId.has_value());
 }
 
 TEST_F(EndOfFileTest, TestDecodingLargeFileWithNoError)
@@ -317,8 +318,7 @@ TEST_F(EndOfFileTest, TestDecodingLargeFileWithNoError)
     ASSERT_EQ(pdu.conditionCode, Condition::NoError);
     ASSERT_EQ(pdu.fileSize, UINT64_MAX);
     ASSERT_EQ(pdu.checksum, 1111111111);
-    ASSERT_EQ(pdu.lengthOfEntityID, 0);
-    ASSERT_EQ(pdu.faultEntityID, 0);
+    ASSERT_FALSE(pdu.entityId.has_value());
 }
 
 TEST_F(EndOfFileTest, TestDecodingSmallFileWithError)
@@ -329,8 +329,9 @@ TEST_F(EndOfFileTest, TestDecodingSmallFileWithError)
     auto pdu = EndOfFile(encoded, LargeFileFlag::SmallFile);
 
     ASSERT_EQ(pdu.conditionCode, Condition::FileSizeError);
-    ASSERT_EQ(pdu.lengthOfEntityID, 2);
-    ASSERT_EQ(pdu.faultEntityID, 12345);
+    ASSERT_TRUE(pdu.entityId.has_value());
+    ASSERT_EQ(pdu.entityId->get()->lengthOfEntityID, 2);
+    ASSERT_EQ(pdu.entityId->get()->faultEntityID, 12345);
 }
 
 TEST_F(EndOfFileTest, TestDecodingLargeFileWithError)
@@ -341,8 +342,9 @@ TEST_F(EndOfFileTest, TestDecodingLargeFileWithError)
     auto pdu = EndOfFile(encoded, LargeFileFlag::LargeFile);
 
     ASSERT_EQ(pdu.conditionCode, Condition::FileSizeError);
-    ASSERT_EQ(pdu.lengthOfEntityID, 2);
-    ASSERT_EQ(pdu.faultEntityID, 12345);
+    ASSERT_TRUE(pdu.entityId.has_value());
+    ASSERT_EQ(pdu.entityId->get()->lengthOfEntityID, 2);
+    ASSERT_EQ(pdu.entityId->get()->faultEntityID, 12345);
 }
 
 TEST_F(EndOfFileTest, TestDecodingWrongByteStreamSize)

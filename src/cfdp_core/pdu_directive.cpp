@@ -1,10 +1,14 @@
+#include "cfdp_core/pdu_tlv.hpp"
 #include <cfdp_core/pdu_directive.hpp>
 #include <cfdp_core/pdu_enums.hpp>
 #include <cfdp_core/pdu_exceptions.hpp>
 #include <cfdp_core/utils.hpp>
 
 #include <cstdint>
+#include <memory>
+#include <optional>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace
@@ -144,9 +148,10 @@ cfdp::pdu::directive::EndOfFile::EndOfFile(Condition conditionCode, uint32_t che
 
 cfdp::pdu::directive::EndOfFile::EndOfFile(Condition conditionCode, uint32_t checksum,
                                            uint64_t fileSize, LargeFileFlag largeFileFlag,
-                                           uint8_t lengthOfEntityID, uint64_t faultEntityID)
+                                           std::unique_ptr<tlv::EntityId> entityId)
     : conditionCode(conditionCode), checksum(checksum), fileSize(fileSize),
-      largeFileFlag(largeFileFlag), lengthOfEntityID(lengthOfEntityID), faultEntityID(faultEntityID)
+      largeFileFlag(largeFileFlag), entityId(std::move(entityId))
+
 {
     if (largeFileFlag == LargeFileFlag::SmallFile &&
         utils::bytesNeeded(fileSize) > sizeof(uint32_t))
@@ -187,20 +192,7 @@ cfdp::pdu::directive::EndOfFile::EndOfFile(std::span<uint8_t const> memory,
         return;
     }
 
-    if (memory_size < const_pdu_size_bytes + getSizeOfFileSize() + getFaultLocationSize())
-    {
-        throw exception::DecodeFromBytesException("Passed memory does not contain enough bytes");
-    }
-
-    const auto fault_location_position = 6 + getSizeOfFileSize();
-
-    if (memory[fault_location_position] != utils::toUnderlying(TLVType::EntityId))
-    {
-        throw exception::DecodeFromBytesException("TLVType is not Enitity Id");
-    }
-    lengthOfEntityID = memory[fault_location_position + 1];
-    faultEntityID =
-        utils::bytesToInt<uint64_t>(memory, fault_location_position + 2, lengthOfEntityID);
+    entityId = std::make_unique<tlv::EntityId>(memory.subspan(6 + getSizeOfFileSize()));
 };
 
 std::vector<uint8_t> cfdp::pdu::directive::EndOfFile::encodeToBytes() const
@@ -226,12 +218,8 @@ std::vector<uint8_t> cfdp::pdu::directive::EndOfFile::encodeToBytes() const
     {
         return encodedPdu;
     }
-
-    encodedPdu.push_back(utils::toUnderlying(TLVType::EntityId));
-    encodedPdu.push_back(lengthOfEntityID);
-
-    auto faultEntityIDBytes = utils::intToBytes(faultEntityID, lengthOfEntityID);
-    utils::concatenateVectorsInplace(faultEntityIDBytes, encodedPdu);
+    auto entity_bytes = entityId->get()->encodeToBytes();
+    utils::concatenateVectorsInplace(entity_bytes, encodedPdu);
 
     return encodedPdu;
 }
