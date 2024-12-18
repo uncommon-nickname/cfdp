@@ -44,7 +44,7 @@ std::span<uint8_t const> cfdp::utils::readLvValue(std::span<uint8_t const> memor
     {
         throw exception::DecodeFromBytesException{"Passed memory does not contain enough bytes"};
     }
-    auto value_size = memory[offset];
+    const auto value_size = memory[offset];
 
     if (memory.size() < offset + sizeof(uint8_t) + value_size)
     {
