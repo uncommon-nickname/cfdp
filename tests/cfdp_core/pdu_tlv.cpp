@@ -16,6 +16,7 @@ using ::cfdp::pdu::exception::PduConstructionException;
 using ::cfdp::pdu::tlv::EntityId;
 using ::cfdp::pdu::tlv::FilestoreRequest;
 using ::cfdp::pdu::tlv::FilestoreRequestActionCode;
+using ::cfdp::pdu::tlv::MessageToUser;
 
 class FilestoreRequestTest : public testing::Test
 {
@@ -34,6 +35,12 @@ class FilestoreRequestTest : public testing::Test
                                                                              105, 114, 115, 116};
     static constexpr std::array<uint8_t, 16> encoded_create_two_file_frame = {
         0, 14, 32, 5, 102, 105, 114, 115, 116, 6, 115, 101, 99, 111, 110, 100};
+};
+
+class MessageToUserTest : public testing::Test
+{
+  protected:
+    static constexpr std::array<uint8_t, 7> encoded_frame = {2, 5, 104, 101, 108, 108, 111};
 };
 
 class EntityIdTest : public testing::Test
@@ -117,6 +124,41 @@ TEST_P(FilestoreRequestDecodingException, TestDecodingException)
     auto encoded = std::span<uint8_t const>{frame.begin(), frame.end()};
 
     ASSERT_THROW(FilestoreRequest{encoded}, DecodeFromBytesException);
+}
+
+TEST_F(MessageToUserTest, TestEncoding)
+{
+    auto tlv     = MessageToUser("hello");
+    auto encoded = tlv.encodeToBytes();
+
+    ASSERT_EQ(tlv.message, "hello");
+    EXPECT_THAT(encoded, testing::ElementsAreArray(encoded_frame));
+}
+
+TEST_F(MessageToUserTest, TestDecoding)
+{
+    auto encoded = std::span<uint8_t const>{encoded_frame.begin(), encoded_frame.end()};
+    auto tlv     = MessageToUser(encoded);
+
+    ASSERT_EQ(tlv.message, "hello");
+}
+
+TEST_F(MessageToUserTest, TestDecodingEmptyMemory)
+{
+    ASSERT_THROW(MessageToUser(std::span<uint8_t, 0>{}), DecodeFromBytesException);
+}
+
+TEST_F(MessageToUserTest, TestDecodingTooSmallEntityLength)
+{
+    auto encoded = std::span<uint8_t const>{encoded_frame.begin(), encoded_frame.end() - 1};
+    ASSERT_THROW(MessageToUser{encoded}, DecodeFromBytesException);
+}
+
+TEST_F(MessageToUserTest, TestDecodingWrongType)
+{
+    std::array<uint8_t, 8> frame = {0, 6, 0, 0, 0, 0, 4, 87};
+    auto encoded                 = std::span<uint8_t const>{frame.begin(), frame.end()};
+    ASSERT_THROW(MessageToUser{encoded}, DecodeFromBytesException);
 }
 
 TEST_F(EntityIdTest, TestEncoding)
